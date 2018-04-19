@@ -35,14 +35,12 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-template <class TREE>
-float DynamicEDTOctomapBase<TREE>::distanceValue_Error = -1.0;
+#include <dynamicEDT3D/dynamicEDTOctomap.h>
 
-template <class TREE>
-int DynamicEDTOctomapBase<TREE>::distanceInCellsValue_Error = -1;
+float DynamicEDTOctomap::distanceValue_Error = -1.0;
+int DynamicEDTOctomap::distanceInCellsValue_Error = -1;
 
-template <class TREE>
-DynamicEDTOctomapBase<TREE>::DynamicEDTOctomapBase(float maxdist, TREE* _octree, octomap::point3d bbxMin, octomap::point3d bbxMax, bool treatUnknownAsOccupied)
+DynamicEDTOctomap::DynamicEDTOctomap(float maxdist, octomap::OcTree* _octree, octomap::point3d bbxMin, octomap::point3d bbxMax, bool treatUnknownAsOccupied)
 : DynamicEDT3D(((int) (maxdist/_octree->getResolution()+1)*((int) (maxdist/_octree->getResolution()+1)))), octree(_octree), unknownOccupied(treatUnknownAsOccupied)
 {
 	treeDepth = octree->getTreeDepth();
@@ -51,14 +49,12 @@ DynamicEDTOctomapBase<TREE>::DynamicEDTOctomapBase(float maxdist, TREE* _octree,
 	octree->enableChangeDetection(true);
 }
 
-template <class TREE>
-DynamicEDTOctomapBase<TREE>::~DynamicEDTOctomapBase() {
+DynamicEDTOctomap::~DynamicEDTOctomap() {
 
 }
 
 
-template <class TREE>
-void DynamicEDTOctomapBase<TREE>::update(bool updateRealDist){
+void DynamicEDTOctomap::update(bool updateRealDist){
 
 	for(octomap::KeyBoolMap::const_iterator it = octree->changedKeysBegin(), end=octree->changedKeysEnd(); it!=end; ++it){
 		//the keys in this list all go down to the lowest level!
@@ -71,7 +67,7 @@ void DynamicEDTOctomapBase<TREE>::update(bool updateRealDist){
 		if(key[0] > boundingBoxMaxKey[0] || key[1] > boundingBoxMaxKey[1] || key[2] > boundingBoxMaxKey[2])
 			continue;
 
-		typename TREE::NodeType* node = octree->search(key);
+		octomap::OcTreeNode* node = octree->search(key);
 		assert(node);
 		//"node" is not necessarily at lowest level, BUT: the occupancy value of this node
 		//has to be the same as of the node indexed by the key *it
@@ -83,8 +79,7 @@ void DynamicEDTOctomapBase<TREE>::update(bool updateRealDist){
 	DynamicEDT3D::update(updateRealDist);
 }
 
-template <class TREE>
-void DynamicEDTOctomapBase<TREE>::initializeOcTree(octomap::point3d bbxMin, octomap::point3d bbxMax){
+void DynamicEDTOctomap::initializeOcTree(octomap::point3d bbxMin, octomap::point3d bbxMax){
 
     boundingBoxMinKey = octree->coordToKey(bbxMin);
     boundingBoxMaxKey = octree->coordToKey(bbxMax);
@@ -101,7 +96,7 @@ void DynamicEDTOctomapBase<TREE>::initializeOcTree(octomap::point3d bbxMin, octo
 
 
 	if(unknownOccupied == false){
-		for(typename TREE::leaf_bbx_iterator it = octree->begin_leafs_bbx(bbxMin,bbxMax), end=octree->end_leafs_bbx(); it!= end; ++it){
+		for(octomap::OcTree::leaf_bbx_iterator it = octree->begin_leafs_bbx(bbxMin,bbxMax), end=octree->end_leafs_bbx(); it!= end; ++it){
 			if(octree->isNodeOccupied(*it)){
 				int nodeDepth = it.getDepth();
 				if( nodeDepth == treeDepth){
@@ -135,7 +130,7 @@ void DynamicEDTOctomapBase<TREE>::initializeOcTree(octomap::point3d bbxMin, octo
 				for(int dz=0; dz<sizeZ; dz++){
 					key[2] = boundingBoxMinKey[2] + dz;
 
-					typename TREE::NodeType* node = octree->search(key);
+					octomap::OcTreeNode* node = octree->search(key);
 					if(!node || octree->isNodeOccupied(node)){
 						insertMaxDepthLeafAtInitialize(key);
 					}
@@ -145,8 +140,7 @@ void DynamicEDTOctomapBase<TREE>::initializeOcTree(octomap::point3d bbxMin, octo
 	}
 }
 
-template <class TREE>
-void DynamicEDTOctomapBase<TREE>::insertMaxDepthLeafAtInitialize(octomap::OcTreeKey key){
+void DynamicEDTOctomap::insertMaxDepthLeafAtInitialize(octomap::OcTreeKey key){
 	bool isSurrounded = true;
 
 
@@ -155,7 +149,7 @@ void DynamicEDTOctomapBase<TREE>::insertMaxDepthLeafAtInitialize(octomap::OcTree
 			for(int dz=-1; dz<=1; dz++){
 				if(dx==0 && dy==0 && dz==0)
 					continue;
-				typename TREE::NodeType* node = octree->search(octomap::OcTreeKey(key[0]+dx, key[1]+dy, key[2]+dz));
+				octomap::OcTreeNode* node = octree->search(octomap::OcTreeKey(key[0]+dx, key[1]+dy, key[2]+dz));
 				if((!unknownOccupied && node==NULL) || ((node!=NULL) && (octree->isNodeOccupied(node)==false))){
 					isSurrounded = false;
 					break;
@@ -182,34 +176,30 @@ void DynamicEDTOctomapBase<TREE>::insertMaxDepthLeafAtInitialize(octomap::OcTree
 	}
 }
 
-template <class TREE>
-void DynamicEDTOctomapBase<TREE>::updateMaxDepthLeaf(octomap::OcTreeKey& key, bool occupied){
+void DynamicEDTOctomap::updateMaxDepthLeaf(octomap::OcTreeKey& key, bool occupied){
 	if(occupied)
 		setObstacle(key[0]+offsetX, key[1]+offsetY, key[2]+offsetZ);
 	else
 		removeObstacle(key[0]+offsetX, key[1]+offsetY, key[2]+offsetZ);
 }
 
-template <class TREE>
-void DynamicEDTOctomapBase<TREE>::worldToMap(const octomap::point3d &p, int &x, int &y, int &z) const {
+void DynamicEDTOctomap::worldToMap(const octomap::point3d &p, int &x, int &y, int &z) const {
 	octomap::OcTreeKey key = octree->coordToKey(p);
 	x = key[0] + offsetX;
 	y = key[1] + offsetY;
 	z = key[2] + offsetZ;
 }
 
-template <class TREE>
-void DynamicEDTOctomapBase<TREE>::mapToWorld(int x, int y, int z, octomap::point3d &p) const {
+void DynamicEDTOctomap::mapToWorld(int x, int y, int z, octomap::point3d &p) const {
 	p = octree->keyToCoord(octomap::OcTreeKey(x-offsetX, y-offsetY, z-offsetZ));
 }
 
-template <class TREE>
-void DynamicEDTOctomapBase<TREE>::mapToWorld(int x, int y, int z, octomap::OcTreeKey &key) const {
+void DynamicEDTOctomap::mapToWorld(int x, int y, int z, octomap::OcTreeKey &key) const {
 	key = octomap::OcTreeKey(x-offsetX, y-offsetY, z-offsetZ);
 }
 
-template <class TREE>
-void DynamicEDTOctomapBase<TREE>::getDistanceAndClosestObstacle(const octomap::point3d& p, float &distance, octomap::point3d& closestObstacle) const {
+
+void DynamicEDTOctomap::getDistanceAndClosestObstacle(const octomap::point3d& p, float &distance, octomap::point3d& closestObstacle) const {
 	int x,y,z;
 	worldToMap(p, x, y, z);
 	if(x>=0 && x<sizeX && y>=0 && y<sizeY && z>=0 && z<sizeZ){
@@ -226,8 +216,8 @@ void DynamicEDTOctomapBase<TREE>::getDistanceAndClosestObstacle(const octomap::p
 	}
 }
 
-template <class TREE>
-void DynamicEDTOctomapBase<TREE>::getDistanceAndClosestObstacle_unsafe(const octomap::point3d& p, float &distance, octomap::point3d& closestObstacle) const {
+
+void DynamicEDTOctomap::getDistanceAndClosestObstacle_unsafe(const octomap::point3d& p, float &distance, octomap::point3d& closestObstacle) const {
 	int x,y,z;
 	worldToMap(p, x, y, z);
 
@@ -241,8 +231,8 @@ void DynamicEDTOctomapBase<TREE>::getDistanceAndClosestObstacle_unsafe(const oct
 	}
 }
 
-template <class TREE>
-float DynamicEDTOctomapBase<TREE>::getDistance(const octomap::point3d& p) const {
+
+float DynamicEDTOctomap::getDistance(const octomap::point3d& p) const {
   int x,y,z;
   worldToMap(p, x, y, z);
   if(x>=0 && x<sizeX && y>=0 && y<sizeY && z>=0 && z<sizeZ){
@@ -252,15 +242,14 @@ float DynamicEDTOctomapBase<TREE>::getDistance(const octomap::point3d& p) const 
   }
 }
 
-template <class TREE>
-float DynamicEDTOctomapBase<TREE>::getDistance_unsafe(const octomap::point3d& p) const {
+float DynamicEDTOctomap::getDistance_unsafe(const octomap::point3d& p) const {
   int x,y,z;
   worldToMap(p, x, y, z);
   return data[x][y][z].dist*treeResolution;
 }
 
-template <class TREE>
-float DynamicEDTOctomapBase<TREE>::getDistance(const octomap::OcTreeKey& k) const {
+
+float DynamicEDTOctomap::getDistance(const octomap::OcTreeKey& k) const {
   int x = k[0] + offsetX;
   int y = k[1] + offsetY;
   int z = k[2] + offsetZ;
@@ -272,8 +261,8 @@ float DynamicEDTOctomapBase<TREE>::getDistance(const octomap::OcTreeKey& k) cons
   }
 }
 
-template <class TREE>
-float DynamicEDTOctomapBase<TREE>::getDistance_unsafe(const octomap::OcTreeKey& k) const {
+
+float DynamicEDTOctomap::getDistance_unsafe(const octomap::OcTreeKey& k) const {
   int x = k[0] + offsetX;
   int y = k[1] + offsetY;
   int z = k[2] + offsetZ;
@@ -281,8 +270,8 @@ float DynamicEDTOctomapBase<TREE>::getDistance_unsafe(const octomap::OcTreeKey& 
   return data[x][y][z].dist*treeResolution;
 }
 
-template <class TREE>
-int DynamicEDTOctomapBase<TREE>::getSquaredDistanceInCells(const octomap::point3d& p) const {
+
+int DynamicEDTOctomap::getSquaredDistanceInCells(const octomap::point3d& p) const {
   int x,y,z;
   worldToMap(p, x, y, z);
   if(x>=0 && x<sizeX && y>=0 && y<sizeY && z>=0 && z<sizeZ){
@@ -292,15 +281,14 @@ int DynamicEDTOctomapBase<TREE>::getSquaredDistanceInCells(const octomap::point3
   }
 }
 
-template <class TREE>
-int DynamicEDTOctomapBase<TREE>::getSquaredDistanceInCells_unsafe(const octomap::point3d& p) const {
+int DynamicEDTOctomap::getSquaredDistanceInCells_unsafe(const octomap::point3d& p) const {
   int x,y,z;
   worldToMap(p, x, y, z);
   return data[x][y][z].sqdist;
 }
 
-template <class TREE>
-bool DynamicEDTOctomapBase<TREE>::checkConsistency() const {
+
+bool DynamicEDTOctomap::checkConsistency() const {
 
 	for(octomap::KeyBoolMap::const_iterator it = octree->changedKeysBegin(), end=octree->changedKeysEnd(); it!=end; ++it){
 		//std::cerr<<"Cannot check consistency, you must execute the update() method first."<<std::endl;
@@ -313,7 +301,7 @@ bool DynamicEDTOctomapBase<TREE>::checkConsistency() const {
 
 				octomap::point3d point;
 				mapToWorld(x,y,z,point);
-				typename TREE::NodeType* node = octree->search(point);
+				octomap::OcTreeNode* node = octree->search(point);
 
 				bool mapOccupied = isOccupied(x,y,z);
 				bool treeOccupied = false;
@@ -336,3 +324,6 @@ bool DynamicEDTOctomapBase<TREE>::checkConsistency() const {
 
 	return true;
 }
+
+
+

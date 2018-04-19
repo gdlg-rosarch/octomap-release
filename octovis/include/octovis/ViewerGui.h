@@ -25,12 +25,7 @@
 #ifndef VIEWERGUI_H
 #define VIEWERGUI_H
 
-#include <qglobal.h>
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
-#include <QtWidgets/QMainWindow>
-#else  // QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
 #include <QtGui/QMainWindow>
-#endif // QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QDockWidget>
@@ -56,7 +51,7 @@ namespace octomap {
     Q_OBJECT
    
   public:
-    ViewerGui(const std::string& filename="", QWidget *parent = 0, unsigned int initTreeDepth = 16);
+    ViewerGui(const std::string& filename="", QWidget *parent = 0);
     ~ViewerGui();
 
     static const unsigned int LASERTYPE_URG  = 0;
@@ -111,7 +106,6 @@ namespace octomap {
     void on_actionSelected_toggled(bool enabled);
     void on_actionAxes_toggled(bool checked);
     void on_actionHideBackground_toggled(bool checked);
-    void on_actionAlternateRendering_toggled(bool checked);
     void on_actionClear_triggered();
 
     void on_action_bg_black_triggered();
